@@ -47,29 +47,31 @@ for ($i = 0; $i -lt $softwareList.software.Count; $i++) {
 }
 
 # Countdown Timer and Input Handling
-Write-Host "`nEnter numbers for specific software (e.g., 1,3,5) or press Enter for all:" -ForegroundColor DarkGray
 $timeout = 10
 $timer = [System.Diagnostics.Stopwatch]::StartNew()
 
-# Wait for user input or timeout
+# Prompt for user input and check after 10 seconds if no input is received
 $choices = $null
+
+# Wait for user input
 while ($timer.Elapsed.TotalSeconds -lt $timeout) {
-    # Check for input if any key is pressed
+    # Check if a key is pressed (meaning the user has entered input)
     if ($Host.UI.RawUI.KeyAvailable) {
-        $choices = Read-Host "Enter your choices"
+        $choices = Read-Host "Enter the number(s) of the software to install (e.g., 1, 3, 5) or press Enter for all"
         break
     }
-
-    # Countdown message
+    
+    # Display countdown message
     $remainingTime = [math]::Ceiling($timeout - $timer.Elapsed.TotalSeconds)
     Write-Host "`rAuto-installing in [$remainingTime] seconds..." -NoNewline -ForegroundColor DarkCyan
     Start-Sleep -Milliseconds 100
     Write-Host "`r" -NoNewline
 }
 
-# Process input after the loop ends or if user input is received
+# Handle input after timer expires or if user entered something
 Write-Host "`r" + (" " * 80) + "`r" -NoNewline
 if ($choices) {
+    # Split the input and filter valid choices
     $choices = $choices -split "[,\s]+" | Where-Object { $_ -match '^\d+$' }
     $toInstall = @()
 
@@ -81,7 +83,8 @@ if ($choices) {
         }
     }
 } else {
-    Write-Log "Installing all software..." "WARN"
+    # No input, proceed to install all software
+    Write-Log "No input received. Installing all software..." "WARN"
     $toInstall = $softwareList.software
 }
 
