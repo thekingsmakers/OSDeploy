@@ -41,21 +41,41 @@ try {
 }
 
 # Display Software Selection with Numbers
-Write-Log "`nSelect the software you want to install:" "INFO"
+Write-Log "`nSelect the software you want to install (or wait for auto-install in 10 seconds):" "INFO"
 for ($i = 0; $i -lt $softwareList.software.Count; $i++) {
     Write-Host "[$($i+1)] $($softwareList.software[$i].name)" -ForegroundColor Yellow
 }
 
-# User Selection
-$choices = Read-Host "`nEnter the numbers (comma-separated) to install (e.g., 1,3,5)"
-$choices = $choices -split "," | ForEach-Object { $_.Trim() }
-$toInstall = @()
+# Countdown Timer for Auto-Install
+$stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
+$timeout = 10
+$choices = @()
 
-foreach ($choice in $choices) {
-    if ($choice -match '^\d+$' -and [int]$choice -le $softwareList.software.Count) {
-        $toInstall += $softwareList.software[[int]$choice - 1]
-    } else {
-        Write-Log "Invalid choice: $choice" "WARN"
+Write-Host "`nPress Enter or choose software by typing numbers (e.g., 1,3,5)..." -ForegroundColor DarkGray
+while ($stopwatch.Elapsed.Seconds -lt $timeout) {
+    if ([console]::KeyAvailable) {
+        $choices = Read-Host "Enter your choices"
+        break
+    }
+    Write-Host "Auto-installing in [$($timeout - $stopwatch.Elapsed.Seconds)] seconds..." -NoNewline -ForegroundColor DarkCyan
+    Start-Sleep -Milliseconds 1000
+    Write-Host "`r" -NoNewline
+}
+
+# If no input, install all software
+if (-not $choices) {
+    Write-Log "No input detected. Installing all software..." "WARN"
+    $toInstall = $softwareList.software
+} else {
+    $choices = $choices -split "," | ForEach-Object { $_.Trim() }
+    $toInstall = @()
+    
+    foreach ($choice in $choices) {
+        if ($choice -match '^\d+$' -and [int]$choice -le $softwareList.software.Count) {
+            $toInstall += $softwareList.software[[int]$choice - 1]
+        } else {
+            Write-Log "Invalid choice: $choice" "WARN"
+        }
     }
 }
 
