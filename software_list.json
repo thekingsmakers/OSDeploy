@@ -35,12 +35,12 @@
       "silentArgs": "/S",
       "category": "Utilities"
     },
-  {
-    "id": "adobe_reader",
-    "name": "Adobe Reader",
-    "url": "https://get.adobe.com/reader/download",
-    "silentArgs": "/sAll /rs /msi EULA_ACCEPT=YES"
-  }
-]   
+    {
+      "id": "adobe_reader",
+      "name": "Adobe Reader",
+      "url": "https://get.adobe.com/reader/enterprise/",
+      "silentArgs": "/sAll /rs /msi EULA_ACCEPT=YES",
+      "category": "Utilities"
+    }
+  ]
 }
-
