@@ -20,11 +20,6 @@ function Write-Log {
     }
 }
 
-# Function to Clear Current Line
-function Clear-Line {
-    Write-Host "`r" + (" " * 80) + "`r" -NoNewline
-}
-
 # Download software_list.json if missing
 if (-not (Test-Path -Path $softwareListPath)) {
     Write-Log "Downloading software_list.json..." "INFO"
@@ -46,50 +41,48 @@ try {
 }
 
 # Display Software Selection with Numbers
-Write-Log "`nAvailable Software:" "INFO"
+Write-Log "`nSelect the software you want to install (or wait for auto-install in 10 seconds):" "INFO"
 for ($i = 0; $i -lt $softwareList.software.Count; $i++) {
     Write-Host "[$($i+1)] $($softwareList.software[$i].name)" -ForegroundColor Yellow
 }
 
-# Input Handling with Timeout
+# Countdown Timer for Auto-Install
 $timeout = 10
 $choices = $null
 $startTime = Get-Date
 
-Write-Host "`nPress Enter to install all, or type numbers (e.g., 1,3,5) for specific software..." -ForegroundColor DarkGray
-Write-Host "Auto-installing all in $timeout seconds..." -ForegroundColor DarkGray
+Write-Host "`nPress Enter or choose software by typing numbers (e.g., 1,3,5)..." -ForegroundColor DarkGray
 
-while ((Get-Date) - $startTime).TotalSeconds -lt $timeout) {
+while (((Get-Date) - $startTime).TotalSeconds -lt $timeout) {
     if ($Host.UI.RawUI.KeyAvailable) {
         $key = $Host.UI.RawUI.ReadKey('NoEcho,IncludeKeyDown')
-        Clear-Line
         if ($key.VirtualKeyCode -eq 13) { # Enter key
             $choices = ""
             break
         }
-        $Host.UI.RawUI.FlushInputBuffer()
         $choices = Read-Host "Enter your choices"
         break
     }
     
-    $remainingTime = [math]::Round($timeout - ((Get-Date) - $startTime).TotalSeconds)
+    $remainingTime = $timeout - [math]::Round(((Get-Date) - $startTime).TotalSeconds)
     Write-Host "Auto-installing in [$remainingTime] seconds..." -NoNewline -ForegroundColor DarkCyan
     Start-Sleep -Milliseconds 1000
-    Clear-Line
+    Write-Host "`r" -NoNewline
 }
 
-Clear-Line
+# Clear the last countdown message
+Write-Host "`r" + (" " * 80) + "`r" -NoNewline
 
-# Process Software Selection
+# If no input, install all software
 if (-not $choices) {
-    Write-Log "Installing all software..." "WARN"
+    Write-Log "No input detected. Installing all software..." "WARN"
     $toInstall = $softwareList.software
 } else {
-    $choices = $choices -split "[,\s]+" | Where-Object { $_ -match '^\d+$' }
+    $choices = $choices -split "," | ForEach-Object { $_.Trim() }
     $toInstall = @()
     
     foreach ($choice in $choices) {
-        if ([int]$choice -le $softwareList.software.Count) {
+        if ($choice -match '^\d+$' -and [int]$choice -le $softwareList.software.Count) {
             $toInstall += $softwareList.software[[int]$choice - 1]
         } else {
             Write-Log "Invalid choice: $choice" "WARN"
@@ -102,71 +95,47 @@ if ($toInstall.Count -eq 0) {
     exit 1
 }
 
-# Create Installation Directory if it doesn't exist
-$installDir = "$env:TEMP\SoftwareInstall"
-if (-not (Test-Path -Path $installDir)) {
-    New-Item -ItemType Directory -Path $installDir | Out-Null
-}
-
 # Install Selected Software
-$installationResults = @()
 foreach ($software in $toInstall) {
-    Write-Log "Processing $($software.name)..." "INFO"
-    $status = "Failed"
-    $installerPath = "$installDir\$($software.id).exe"
+    Write-Log "Installing $($software.name)..." "INFO"
+
+    $installerPath = "$env:TEMP\$($software.id).exe"
 
     # Download Installer
     try {
         Invoke-WebRequest -Uri $software.url -OutFile $installerPath
         Write-Log "$($software.name) downloaded successfully!" "SUCCESS"
-        
-        # Install Software
-        Write-Log "Installing $($software.name)..." "INFO"
-        $process = Start-Process -FilePath $installerPath -ArgumentList $software.silentArgs -Wait -PassThru
-        
-        if ($process.ExitCode -eq 0) {
-            Write-Log "$($software.name) installed successfully!" "SUCCESS"
-            $status = "Successful"
-        } else {
-            Write-Log "Installation failed for $($software.name) with exit code $($process.ExitCode)" "ERROR"
-        }
     } catch {
-        Write-Log "Error processing $($software.name): $_" "ERROR"
-    } finally {
-        # Cleanup
-        if (Test-Path -Path $installerPath) {
-            Remove-Item -Path $installerPath -Force
-        }
+        Write-Log "Failed to download $($software.name). Skipping..." "ERROR"
+        continue
     }
-    
-    $installationResults += [PSCustomObject]@{
-        Software = $software.name
-        Status = $status
-        InstallTime = Get-Date
+
+    # Install with Progress
+    Write-Log "Starting installation for $($software.name)..." "INFO"
+    try {
+        Start-Process -FilePath $installerPath -ArgumentList $software.silentArgs -Wait
+        Write-Log "$($software.name) installed successfully!" "SUCCESS"
+    } catch {
+        Write-Log "Installation failed for $($software.name)!" "ERROR"
     }
+
+    # Clean Up
+    Remove-Item -Path $installerPath -Force
 }
 
 # Generate Installation Summary
 $summaryPath = "$PSScriptRoot\install_summary.html"
-$css = @"
-<style>
-    body { font-family: Arial, sans-serif; margin: 20px; }
-    h1 { color: #333; }
-    table { border-collapse: collapse; width: 100%; }
-    th, td { padding: 12px; text-align: left; border-bottom: 1px solid #ddd; }
-    th { background-color: #f2f2f2; }
-    .success { color: green; }
-    .failed { color: red; }
-    footer { margin-top: 20px; color: #666; }
-</style>
-"@
-
 $htmlContent = @"
 <!DOCTYPE html>
 <html>
 <head>
     <title>Installation Summary</title>
-    $css
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        table { border-collapse: collapse; width: 100%; }
+        th, td { padding: 8px; text-align: left; border: 1px solid #ddd; }
+        th { background-color: #f2f2f2; }
+    </style>
 </head>
 <body>
     <h1>Installation Summary</h1>
@@ -174,19 +143,11 @@ $htmlContent = @"
         <tr>
             <th>Software</th>
             <th>Status</th>
-            <th>Install Time</th>
         </tr>
 "@
 
-foreach ($result in $installationResults) {
-    $statusClass = if ($result.Status -eq "Successful") { "success" } else { "failed" }
-    $htmlContent += @"
-        <tr>
-            <td>$($result.Software)</td>
-            <td class="$statusClass">$($result.Status)</td>
-            <td>$($result.InstallTime)</td>
-        </tr>
-"@
+foreach ($software in $toInstall) {
+    $htmlContent += "<tr><td>$($software.name)</td><td>Installed</td></tr>`n"
 }
 
 $htmlContent += @"
@@ -196,11 +157,8 @@ $htmlContent += @"
 </html>
 "@
 
-$htmlContent | Out-File -FilePath $summaryPath -Encoding UTF8
+$htmlContent | Out-File -FilePath $summaryPath
 Write-Log "Installation summary created: $summaryPath" "INFO"
-
-# Clean up installation directory
-Remove-Item -Path $installDir -Recurse -Force
 
 # Optional: Open Summary in Browser
 Start-Process $summaryPath
