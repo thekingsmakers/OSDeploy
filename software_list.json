@@ -1,1 +1,40 @@
+{
+  "software": [
+    {
+      "name": "Google Chrome",
+      "id": "chrome",
+      "url": "https://dl.google.com/chrome/install/latest/chrome_installer.exe",
+      "silentArgs": "/silent /install",
+      "category": "Browser"
+    },
+    {
+      "name": "Visual Studio Code",
+      "id": "vscode",
+      "url": "https://update.code.visualstudio.com/latest/win32-x64/stable",
+      "silentArgs": "/verysilent /norestart",
+      "category": "Development"
+    },
+    {
+      "name": "Zoom",
+      "id": "zoom",
+      "url": "https://zoom.us/client/latest/ZoomInstaller.exe",
+      "silentArgs": "/quiet",
+      "category": "Communication"
+    },
+    {
+      "name": "7-Zip",
+      "id": "7zip",
+      "url": "https://www.7-zip.org/a/7z1900-x64.msi",
+      "silentArgs": "/qn",
+      "category": "Utilities"
+    },
+    {
+      "name": "Notepad++",
+      "id": "notepadpp",
+      "url": "https://github.com/notepad-plus-plus/notepad-plus-plus/releases/download/v8.6/npp.8.6.Installer.x64.exe",
+      "silentArgs": "/S",
+      "category": "Utilities"
+    }
+  ]
+}
 
