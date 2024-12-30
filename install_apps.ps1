@@ -53,14 +53,23 @@ $choices = @()
 
 Write-Host "`nPress Enter or choose software by typing numbers (e.g., 1,3,5)..." -ForegroundColor DarkGray
 while ($stopwatch.Elapsed.Seconds -lt $timeout) {
-    if ([console]::KeyAvailable) {
+    if ($Host.UI.RawUI.KeyAvailable) {
         $choices = Read-Host "Enter your choices"
         break
     }
+
+    # Check if any key has been pressed
+    $input = [System.Console]::In.Peek()
+    if ($input -ge 0) {
+        $choices = Read-Host "Enter your choices"
+        break
+    }
+
     Write-Host "Auto-installing in [$($timeout - $stopwatch.Elapsed.Seconds)] seconds..." -NoNewline -ForegroundColor DarkCyan
     Start-Sleep -Milliseconds 1000
     Write-Host "`r" -NoNewline
 }
+
 
 # If no input, install all software
 if (-not $choices) {
