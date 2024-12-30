@@ -1,3 +1,4 @@
+# software_list.json
 {
   "software": [
     {
@@ -24,8 +25,8 @@
     {
       "name": "7-Zip",
       "id": "7zip",
-      "url": "https://www.7-zip.org/a/7z1900-x64.msi",
-      "silentArgs": "/qn",
+      "url": "https://www.7-zip.org/a/7z2409-x64.exe",
+      "silentArgs": "/S",
       "category": "Utilities"
     },
     {
@@ -38,7 +39,7 @@
     {
       "id": "adobe_reader",
       "name": "Adobe Reader",
-      "url": "https://get.adobe.com/reader/enterprise/",
+      "url": "https://ardownload2.adobe.com/pub/adobe/reader/win/AcrobatDC/2300920055/AcroRdrDC2300920055_en_US.exe",
       "silentArgs": "/sAll /rs /msi EULA_ACCEPT=YES",
       "category": "Utilities"
     }
