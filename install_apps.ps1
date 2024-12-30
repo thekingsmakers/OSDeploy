@@ -46,43 +46,52 @@ for ($i = 0; $i -lt $softwareList.software.Count; $i++) {
     Write-Host "[$($i+1)] $($softwareList.software[$i].name)" -ForegroundColor Yellow
 }
 
-# Countdown Timer for Auto-Install
+# Countdown Timer and Input Handling
+Write-Host "`nEnter numbers for specific software (e.g., 1,3,5) or press Enter for all:" -ForegroundColor DarkGray
 $timeout = 10
-$choices = $null
-$startTime = Get-Date
+$timer = [System.Diagnostics.Stopwatch]::StartNew()
 
-Write-Host "`nPress Enter or choose software by typing numbers (e.g., 1,3,5)..." -ForegroundColor DarkGray
-
-while (((Get-Date) - $startTime).TotalSeconds -lt $timeout) {
-    if ($Host.UI.RawUI.KeyAvailable) {
-        $key = $Host.UI.RawUI.ReadKey('NoEcho,IncludeKeyDown')
-        if ($key.VirtualKeyCode -eq 13) { # Enter key
-            $choices = ""
-            break
-        }
-        $choices = Read-Host "Enter your choices"
-        break
-    }
-    
-    $remainingTime = $timeout - [math]::Round(((Get-Date) - $startTime).TotalSeconds)
-    Write-Host "Auto-installing in [$remainingTime] seconds..." -NoNewline -ForegroundColor DarkCyan
-    Start-Sleep -Milliseconds 1000
-    Write-Host "`r" -NoNewline
+# Create a script block for reading host input with timeout
+$scriptBlock = {
+    $host.UI.RawUI.FlushInputBuffer()
+    $input = Read-Host
+    return $input
 }
 
-# Clear the last countdown message
+# Create a job to handle the input
+$job = Start-Job -ScriptBlock $scriptBlock
+
+while ($timer.Elapsed.TotalSeconds -lt $timeout -and $job.State -eq 'Running') {
+    $remainingTime = [math]::Ceiling($timeout - $timer.Elapsed.TotalSeconds)
+    Write-Host "`rAuto-installing in [$remainingTime] seconds..." -NoNewline -ForegroundColor DarkCyan
+    Start-Sleep -Milliseconds 100
+    
+    if ($job.State -eq 'Completed') {
+        break
+    }
+}
+
 Write-Host "`r" + (" " * 80) + "`r" -NoNewline
 
-# If no input, install all software
-if (-not $choices) {
-    Write-Log "No input detected. Installing all software..." "WARN"
+# Get the result
+if ($job.State -eq 'Completed') {
+    $choices = Receive-Job -Job $job
+} else {
+    Stop-Job -Job $job
+    $choices = $null
+}
+Remove-Job -Job $job
+
+# Process software selection
+if ([string]::IsNullOrWhiteSpace($choices)) {
+    Write-Log "Installing all software..." "WARN"
     $toInstall = $softwareList.software
 } else {
-    $choices = $choices -split "," | ForEach-Object { $_.Trim() }
+    $choices = $choices -split "[,\s]+" | Where-Object { $_ -match '^\d+$' }
     $toInstall = @()
     
     foreach ($choice in $choices) {
-        if ($choice -match '^\d+$' -and [int]$choice -le $softwareList.software.Count) {
+        if ([int]$choice -le $softwareList.software.Count) {
             $toInstall += $softwareList.software[[int]$choice - 1]
         } else {
             Write-Log "Invalid choice: $choice" "WARN"
