@@ -34,7 +34,14 @@
       "url": "https://github.com/notepad-plus-plus/notepad-plus-plus/releases/download/v8.6/npp.8.6.Installer.x64.exe",
       "silentArgs": "/S",
       "category": "Utilities"
-    }
+    },
+  {
+    "id": "adobe_reader",
+    "name": "Adobe Reader",
+    "url": "https://get.adobe.com/reader/download",
+    "silentArgs": "/sAll /rs /msi EULA_ACCEPT=YES"
+  }
+]   
   ]
 }
 
