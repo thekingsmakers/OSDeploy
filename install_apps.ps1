@@ -51,45 +51,28 @@ Write-Host "`nEnter numbers for specific software (e.g., 1,3,5) or press Enter f
 $timeout = 10
 $timer = [System.Diagnostics.Stopwatch]::StartNew()
 
-# Create a script block for reading host input with timeout
-$scriptBlock = {
-    $host.UI.RawUI.FlushInputBuffer()
-    $input = Read-Host
-    return $input
-}
+# Wait for user input or timeout
+$choices = $null
+while ($timer.Elapsed.TotalSeconds -lt $timeout) {
+    # Check for input if any key is pressed
+    if ($Host.UI.RawUI.KeyAvailable) {
+        $choices = Read-Host "Enter your choices"
+        break
+    }
 
-# Create a job to handle the input
-$job = Start-Job -ScriptBlock $scriptBlock
-
-while ($timer.Elapsed.TotalSeconds -lt $timeout -and $job.State -eq 'Running') {
+    # Countdown message
     $remainingTime = [math]::Ceiling($timeout - $timer.Elapsed.TotalSeconds)
     Write-Host "`rAuto-installing in [$remainingTime] seconds..." -NoNewline -ForegroundColor DarkCyan
     Start-Sleep -Milliseconds 100
-    
-    if ($job.State -eq 'Completed') {
-        break
-    }
+    Write-Host "`r" -NoNewline
 }
 
+# Process input after the loop ends or if user input is received
 Write-Host "`r" + (" " * 80) + "`r" -NoNewline
-
-# Get the result
-if ($job.State -eq 'Completed') {
-    $choices = Receive-Job -Job $job
-} else {
-    Stop-Job -Job $job
-    $choices = $null
-}
-Remove-Job -Job $job
-
-# Process software selection
-if ([string]::IsNullOrWhiteSpace($choices)) {
-    Write-Log "Installing all software..." "WARN"
-    $toInstall = $softwareList.software
-} else {
+if ($choices) {
     $choices = $choices -split "[,\s]+" | Where-Object { $_ -match '^\d+$' }
     $toInstall = @()
-    
+
     foreach ($choice in $choices) {
         if ([int]$choice -le $softwareList.software.Count) {
             $toInstall += $softwareList.software[[int]$choice - 1]
@@ -97,8 +80,12 @@ if ([string]::IsNullOrWhiteSpace($choices)) {
             Write-Log "Invalid choice: $choice" "WARN"
         }
     }
+} else {
+    Write-Log "Installing all software..." "WARN"
+    $toInstall = $softwareList.software
 }
 
+# Check if valid software is selected
 if ($toInstall.Count -eq 0) {
     Write-Log "No valid software selected. Exiting..." "ERROR"
     exit 1
