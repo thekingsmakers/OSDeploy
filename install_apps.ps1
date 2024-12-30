@@ -41,54 +41,24 @@ try {
 }
 
 # Display Software Selection with Numbers
-Write-Log "`nSelect the software you want to install (or wait for auto-install in 10 seconds):" "INFO"
+Write-Log "`nSelect the software you want to install:" "INFO"
 for ($i = 0; $i -lt $softwareList.software.Count; $i++) {
     Write-Host "[$($i+1)] $($softwareList.software[$i].name)" -ForegroundColor Yellow
 }
 
-# Countdown Timer and Input Handling
-$timeout = 10
-$timer = [System.Diagnostics.Stopwatch]::StartNew()
+# User Selection
+$choices = Read-Host "`nEnter the numbers (comma-separated) to install (e.g., 1,3,5)"
+$choices = $choices -split "," | ForEach-Object { $_.Trim() }
+$toInstall = @()
 
-# Prompt for user input and check after 10 seconds if no input is received
-$choices = $null
-
-# Wait for user input
-while ($timer.Elapsed.TotalSeconds -lt $timeout) {
-    # Check if a key is pressed (meaning the user has entered input)
-    if ($Host.UI.RawUI.KeyAvailable) {
-        $choices = Read-Host "Enter the number(s) of the software to install (e.g., 1, 3, 5) or press Enter for all"
-        break
+foreach ($choice in $choices) {
+    if ($choice -match '^\d+$' -and [int]$choice -le $softwareList.software.Count) {
+        $toInstall += $softwareList.software[[int]$choice - 1]
+    } else {
+        Write-Log "Invalid choice: $choice" "WARN"
     }
-    
-    # Display countdown message
-    $remainingTime = [math]::Ceiling($timeout - $timer.Elapsed.TotalSeconds)
-    Write-Host "`rAuto-installing in [$remainingTime] seconds..." -NoNewline -ForegroundColor DarkCyan
-    Start-Sleep -Milliseconds 100
-    Write-Host "`r" -NoNewline
 }
 
-# Handle input after timer expires or if user entered something
-Write-Host "`r" + (" " * 80) + "`r" -NoNewline
-if ($choices) {
-    # Split the input and filter valid choices
-    $choices = $choices -split "[,\s]+" | Where-Object { $_ -match '^\d+$' }
-    $toInstall = @()
-
-    foreach ($choice in $choices) {
-        if ([int]$choice -le $softwareList.software.Count) {
-            $toInstall += $softwareList.software[[int]$choice - 1]
-        } else {
-            Write-Log "Invalid choice: $choice" "WARN"
-        }
-    }
-} else {
-    # No input, proceed to install all software
-    Write-Log "No input received. Installing all software..." "WARN"
-    $toInstall = $softwareList.software
-}
-
-# Check if valid software is selected
 if ($toInstall.Count -eq 0) {
     Write-Log "No valid software selected. Exiting..." "ERROR"
     exit 1
@@ -129,12 +99,7 @@ $htmlContent = @"
 <html>
 <head>
     <title>Installation Summary</title>
-    <style>
-        body { font-family: Arial, sans-serif; margin: 20px; }
-        table { border-collapse: collapse; width: 100%; }
-        th, td { padding: 8px; text-align: left; border: 1px solid #ddd; }
-        th { background-color: #f2f2f2; }
-    </style>
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <h1>Installation Summary</h1>
