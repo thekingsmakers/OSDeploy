@@ -1,5 +1,5 @@
 # Software Selection and Installation Script
-$repoUrl = "https://raw.githubusercontent.com/YourUsername/Software-Installer/main/apps"
+$repoUrl = "https://github.com/thekingsmakers/OSDeploy/blob/main/install_apps.ps1"
 $softwareList = Get-Content -Raw -Path ".\software_list.json" | ConvertFrom-Json
 $selectedApps = @()
 
